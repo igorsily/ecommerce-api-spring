@@ -1,5 +1,6 @@
 package br.com.ecommerce.controllers;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.ecommerce.models.Produtos;
@@ -58,31 +61,59 @@ public class ProdutosController {
 			return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
 		}
 
+		Produtos produto = this.converterStringEmObjeto(produtoJson);
+
+		Path path = this.uploadImage(file);
+
+		produto.setImagePath(path.toString());
+
+		this.produtosService.save(produto);
+
+		return new ResponseEntity<Void>(HttpStatus.CREATED);
+
+	}
+
+	public Produtos converterStringEmObjeto(String produtoJson) {
 		ObjectMapper mapper = new ObjectMapper();
 
 		Produtos produto = null;
+
+		try {
+			produto = mapper.readValue(produtoJson, Produtos.class);
+			return produto;
+		} catch (JsonParseException e) {
+
+			e.printStackTrace();
+			return null;
+		} catch (JsonMappingException e) {
+
+			e.printStackTrace();
+			return null;
+		} catch (IOException e) {
+
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+
+	public Path uploadImage(MultipartFile file) {
+
 		try {
 
-			produto = mapper.readValue(produtoJson, Produtos.class);
-
 			byte[] bytes = file.getBytes();
-
 			Path path = Paths.get(context.getRealPath("/resources/upload"));
 
 			Files.write(path, bytes);
 
-			produto.setImagePath(path.toString());
+			return path;
+		} catch (IOException e) {
 
-			this.produtosService.save(produto);
+			e.printStackTrace();
 
-			return new ResponseEntity<Void>(HttpStatus.CREATED);
-
-		} catch (Exception e) {
-
-			System.err.println(e);
-
+			return null;
 		}
 
-		return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
 	}
+
 }
